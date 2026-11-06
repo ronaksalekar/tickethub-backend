@@ -12,6 +12,8 @@ import com.tickethub.seat.model.Seat;
 import com.tickethub.seat.model.SeatStatus;
 import com.tickethub.seat.repository.SeatRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,6 +40,7 @@ public class EventService {
     }
 
     @Transactional
+    @CacheEvict(value = {"events", "event_list"}, allEntries = true)
     public EventResponse createEvent(CreateEventRequest request) {
         Venue venue = venueRepository.findById(request.getVenueId())
                 .orElseThrow(() -> new ResourceNotFoundException("Venue not found with id: " + request.getVenueId()));
@@ -69,6 +72,7 @@ public class EventService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "event_list", key = "'all'")
     public List<EventResponse> getAllEvents() {
         return eventRepository.findAll()
                 .stream()
@@ -77,6 +81,7 @@ public class EventService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "events", key = "#eventId")
     public EventResponse getEventById(Long eventId) {
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new ResourceNotFoundException("Event not found with id: " + eventId));

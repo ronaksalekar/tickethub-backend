@@ -31,6 +31,11 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error("Invalid email or password"));
     }
 
+    @ExceptionHandler(SeatAlreadyHeldException.class)
+    public ResponseEntity<ApiResponse<Void>> handleSeatAlreadyHeld(SeatAlreadyHeldException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.error(ex.getMessage()));
+    }
+
     @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
     public ResponseEntity<ApiResponse<Void>> handleOptimisticLock(ObjectOptimisticLockingFailureException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)

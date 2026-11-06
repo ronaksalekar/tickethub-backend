@@ -3,6 +3,7 @@ package com.tickethub.event.dto;
 import com.tickethub.event.model.Event;
 import lombok.*;
 
+import java.io.Serializable;
 import java.time.Instant;
 
 @Getter
@@ -10,7 +11,8 @@ import java.time.Instant;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class EventResponse {
+public class EventResponse implements Serializable {
+    private static final long serialVersionUID = 1L;
     private Long id;
     private Long venueId;
     private String venueName;
