@@ -6,10 +6,12 @@ import com.tickethub.seat.dto.SeatHoldResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Collections;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
@@ -20,6 +22,18 @@ public class SeatHoldService {
 
     public static final Duration HOLD_DURATION = Duration.ofMinutes(5);
     public static final String HOLD_KEY_PREFIX = "seat:hold:";
+
+    /**
+     * Atomic Lua script for safe hold release:
+     * Only deletes the key if its value matches the user's ID.
+     * Prevents the check-then-act race condition where an expired key is deleted from a new holder.
+     */
+    private static final String RELEASE_HOLD_LUA_SCRIPT =
+            "if redis.call('get', KEYS[1]) == ARGV[1] then " +
+            "    return redis.call('del', KEYS[1]) " +
+            "else " +
+            "    return 0 " +
+            "end";
 
     private final StringRedisTemplate redisTemplate;
 
@@ -67,24 +81,33 @@ public class SeatHoldService {
     }
 
     /**
-     * Releases a seat hold, ensuring only the user who holds it (or admin) can release it.
+     * Releases a seat hold using an atomic Redis Lua script.
+     * Guarantees zero race condition when hold expires right during release.
      */
     public void releaseHold(Long eventId, Long seatId, Long userId) {
         String key = buildHoldKey(eventId, seatId);
-        String currentHolder = redisTemplate.opsForValue().get(key);
 
-        if (currentHolder == null) {
-            log.info("Hold on seat {} for event {} has already expired or been released", seatId, eventId);
-            return;
+        DefaultRedisScript<Long> redisScript = new DefaultRedisScript<>();
+        redisScript.setScriptText(RELEASE_HOLD_LUA_SCRIPT);
+        redisScript.setResultType(Long.class);
+
+        Long result = redisTemplate.execute(
+                redisScript,
+                Collections.singletonList(key),
+                String.valueOf(userId)
+        );
+
+        if (result == null || result == 0L) {
+            // Check if key exists under a different user
+            String currentHolder = redisTemplate.opsForValue().get(key);
+            if (currentHolder != null && !currentHolder.equals(String.valueOf(userId))) {
+                log.warn("Unauthorized hold release attempt: User {} tried to release hold belonging to user {}", userId, currentHolder);
+                throw new BadRequestException("You cannot release a seat hold reserved by another user.");
+            }
+            log.info("Hold on seat {} for event {} had already expired or been cleared", seatId, eventId);
+        } else {
+            log.info("Atomically released hold on seat {} (event {}) by user {}", seatId, eventId, userId);
         }
-
-        if (!currentHolder.equals(String.valueOf(userId))) {
-            log.warn("Unauthorized hold release attempt: User {} tried to release hold belonging to user {}", userId, currentHolder);
-            throw new BadRequestException("You cannot release a seat hold reserved by another user.");
-        }
-
-        redisTemplate.delete(key);
-        log.info("Released hold on seat {} (event {}) by user {}", seatId, eventId, userId);
     }
 
     /**

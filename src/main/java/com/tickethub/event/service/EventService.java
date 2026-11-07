@@ -14,6 +14,8 @@ import com.tickethub.seat.repository.SeatRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -72,12 +74,9 @@ public class EventService {
     }
 
     @Transactional(readOnly = true)
-    @Cacheable(value = "event_list", key = "'all'")
-    public List<EventResponse> getAllEvents() {
-        return eventRepository.findAll()
-                .stream()
-                .map(EventResponse::fromEntity)
-                .toList();
+    public Page<EventResponse> getAllEvents(Pageable pageable) {
+        return eventRepository.findAll(pageable)
+                .map(EventResponse::fromEntity);
     }
 
     @Transactional(readOnly = true)

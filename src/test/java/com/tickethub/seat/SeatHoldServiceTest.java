@@ -13,6 +13,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.data.redis.core.script.RedisScript;
 
 import java.time.Duration;
 
@@ -71,22 +72,24 @@ class SeatHoldServiceTest {
     }
 
     @Test
-    @DisplayName("Should release hold when requested by the hold owner")
+    @DisplayName("Should atomically release hold via Lua script when requested by the hold owner")
     void shouldReleaseHoldWhenOwnerRequests() {
-        when(valueOperations.get(expectedKey)).thenReturn(String.valueOf(userId));
+        when(redisTemplate.execute(any(RedisScript.class), anyList(), any()))
+                .thenReturn(1L); // Lua script deleted 1 key
 
         assertDoesNotThrow(() -> seatHoldService.releaseHold(eventId, seatId, userId));
-        verify(redisTemplate, times(1)).delete(expectedKey);
+        verify(redisTemplate, times(1)).execute(any(RedisScript.class), anyList(), any());
     }
 
     @Test
     @DisplayName("Should throw BadRequestException when non-owner tries to release hold")
     void shouldThrowWhenNonOwnerTriesToReleaseHold() {
+        when(redisTemplate.execute(any(RedisScript.class), anyList(), any()))
+                .thenReturn(0L); // Lua script did not delete
         when(valueOperations.get(expectedKey)).thenReturn("999"); // Owner is user 999
 
         assertThrows(BadRequestException.class, () ->
                 seatHoldService.releaseHold(eventId, seatId, userId)
         );
-        verify(redisTemplate, never()).delete(expectedKey);
     }
 }
