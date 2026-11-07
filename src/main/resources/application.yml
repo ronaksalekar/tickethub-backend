@@ -1,15 +1,18 @@
+server:
+  port: ${PORT:8080}
+
 spring:
   application:
     name: tickethub-backend
 
   datasource:
-    # Using 127.0.0.1 directly bypasses slow Windows IPv6 [::1] DNS resolution
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${DB_HOST:127.0.0.1}:${DB_PORT:5432}/${DB_NAME:tickethub_db}}
-    username: ${SPRING_DATASOURCE_USERNAME:${DB_USER:postgres}}
-    password: ${SPRING_DATASOURCE_PASSWORD:${DB_PASSWORD:271205}}
+    # Supports Railway native PG* variables, custom DB_* variables, or full SPRING_DATASOURCE_URL
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${DB_HOST:${PGHOST:127.0.0.1}}:${DB_PORT:${PGPORT:5432}}/${DB_NAME:${PGDATABASE:tickethub_db}}}
+    username: ${SPRING_DATASOURCE_USERNAME:${DB_USER:${PGUSER:postgres}}}
+    password: ${SPRING_DATASOURCE_PASSWORD:${DB_PASSWORD:${PGPASSWORD:271205}}}
     driver-class-name: org.postgresql.Driver
     hikari:
-      connection-timeout: 5000
+      connection-timeout: 10000
       maximum-pool-size: 10
 
   jpa:
@@ -28,10 +31,12 @@ spring:
 
   data:
     redis:
-      host: ${SPRING_DATA_REDIS_HOST:${REDIS_HOST:127.0.0.1}}
-      port: ${SPRING_DATA_REDIS_PORT:${REDIS_PORT:6379}}
-      password: ${SPRING_DATA_REDIS_PASSWORD:${REDIS_PASSWORD:}}
-      timeout: 2000ms
+      # Supports Railway REDIS_URL, native REDIS* variables, REDIS_* variables, or SPRING_DATA_REDIS_*
+      url: ${REDIS_URL:${SPRING_DATA_REDIS_URL:}}
+      host: ${SPRING_DATA_REDIS_HOST:${REDIS_HOST:${REDISHOST:127.0.0.1}}}
+      port: ${SPRING_DATA_REDIS_PORT:${REDIS_PORT:${REDISPORT:6379}}}
+      password: ${SPRING_DATA_REDIS_PASSWORD:${REDIS_PASSWORD:${REDISPASSWORD:}}}
+      timeout: 3000ms
 
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:127.0.0.1:9092}
@@ -46,8 +51,14 @@ spring:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
 
-server:
-  port: 8080
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  health:
+    kafka:
+      enabled: false
 
 app:
   jwt:
