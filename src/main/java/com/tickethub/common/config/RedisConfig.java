@@ -22,12 +22,14 @@ import java.time.Duration;
 @EnableCaching
 public class RedisConfig {
 
-    @Bean
-    public ObjectMapper redisObjectMapper() {
+    /**
+     * Dedicated ObjectMapper strictly for Redis cache serialization.
+     * Kept internal so it does NOT interfere with Spring MVC's REST API JSON parsing.
+     */
+    private ObjectMapper createRedisObjectMapper() {
         ObjectMapper objectMapper = new ObjectMapper();
         objectMapper.registerModule(new JavaTimeModule());
         objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-        // Safely preserve type information for polymorphic JSON deserialization in cache
         objectMapper.activateDefaultTyping(
                 LaissezFaireSubTypeValidator.instance,
                 ObjectMapper.DefaultTyping.NON_FINAL,
@@ -37,21 +39,18 @@ public class RedisConfig {
     }
 
     @Bean
-    public RedisTemplate<String, Object> redisTemplate(
-            RedisConnectionFactory connectionFactory,
-            ObjectMapper redisObjectMapper
-    ) {
+    public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory connectionFactory) {
         RedisTemplate<String, Object> template = new RedisTemplate<>();
         template.setConnectionFactory(connectionFactory);
 
         StringRedisSerializer stringSerializer = new StringRedisSerializer();
-        GenericJackson2JsonRedisSerializer jsonSerializer = new GenericJackson2JsonRedisSerializer(redisObjectMapper);
+        GenericJackson2JsonRedisSerializer jsonSerializer = new GenericJackson2JsonRedisSerializer(createRedisObjectMapper());
 
         // Keys as plain Strings
         template.setKeySerializer(stringSerializer);
         template.setHashKeySerializer(stringSerializer);
 
-        // Values serialized as JSON with type information
+        // Values serialized as JSON with type information for Redis
         template.setValueSerializer(jsonSerializer);
         template.setHashValueSerializer(jsonSerializer);
 
@@ -60,11 +59,8 @@ public class RedisConfig {
     }
 
     @Bean
-    public RedisCacheManager cacheManager(
-            RedisConnectionFactory connectionFactory,
-            ObjectMapper redisObjectMapper
-    ) {
-        GenericJackson2JsonRedisSerializer jsonSerializer = new GenericJackson2JsonRedisSerializer(redisObjectMapper);
+    public RedisCacheManager cacheManager(RedisConnectionFactory connectionFactory) {
+        GenericJackson2JsonRedisSerializer jsonSerializer = new GenericJackson2JsonRedisSerializer(createRedisObjectMapper());
 
         RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
                 .entryTtl(Duration.ofMinutes(10)) // Default cache TTL: 10 minutes

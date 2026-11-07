@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TicketHub — Live Seat Reservation</title>
+    <!-- Inter & JetBrains Mono Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-zinc-950 text-zinc-100 min-h-screen flex flex-col font-sans antialiased selection:bg-zinc-800 selection:text-white">
+
+    <!-- Top Navigation -->
+    <header class="border-b border-zinc-800/80 bg-zinc-950/90 backdrop-blur sticky top-0 z-40">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+            <!-- Brand -->
+            <div class="flex items-center space-x-3">
+                <div class="w-7 h-7 rounded-md bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-300">
+                    <svg class="w-4 h-4 text-zinc-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-5.25h5.25M7.5 15h3M3.375 5.25c-.621 0-1.125.504-1.125 1.125v3.026a2.999 2.999 0 010 5.198v3.026c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125v-3.026a2.999 2.999 0 010-5.198V6.375c0-.621-.504-1.125-1.125-1.125H3.375z" />
+                    </svg>
+                </div>
+                <div class="flex items-baseline space-x-2">
+                    <span class="text-sm font-semibold tracking-tight text-zinc-100">TicketHub</span>
+                    <span class="text-xs text-zinc-500 font-mono hidden sm:inline">v1.0</span>
+                </div>
+            </div>
+
+            <!-- Actions & Auth -->
+            <div class="flex items-center space-x-3">
+                <a href="/swagger-ui.html" target="_blank" class="text-xs text-zinc-400 hover:text-zinc-200 px-2.5 py-1.5 rounded-md border border-zinc-800 hover:border-zinc-700 bg-zinc-900/50 transition flex items-center gap-1.5">
+                    <span>API Docs</span>
+                    <svg class="w-3 h-3 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                </a>
+                <div id="user-pill" class="flex items-center space-x-2 text-xs bg-zinc-900 border border-zinc-800 px-3 py-1.5 rounded-md">
+                    <span id="user-display" class="font-medium text-zinc-400">Not signed in</span>
+                    <button id="auth-btn" onclick="toggleAuthModal()" class="text-zinc-200 hover:text-white font-medium ml-1 transition">
+                        Sign In
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-8 flex flex-col gap-6">
+
+        <!-- Event Overview Header -->
+        <section class="border border-zinc-800/80 bg-zinc-900/30 rounded-xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div class="space-y-1.5">
+                <div class="flex items-center gap-2">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono uppercase tracking-wider text-zinc-400 bg-zinc-800/80 border border-zinc-700/60">
+                        Live Seating
+                    </span>
+                    <span class="text-zinc-600 text-xs">•</span>
+                    <span class="text-xs text-zinc-400 font-mono">Synchronized</span>
+                </div>
+                <h1 id="event-title" class="text-xl sm:text-2xl font-semibold tracking-tight text-zinc-100">
+                    Loading Event...
+                </h1>
+                <p id="event-subtitle" class="text-xs text-zinc-400">
+                    Connecting to inventory service...
+                </p>
+            </div>
+
+            <!-- Seat State Counters -->
+            <div class="flex items-center gap-4 text-xs bg-zinc-900/90 border border-zinc-800 px-4 py-2.5 rounded-lg self-start md:self-auto">
+                <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                    <span class="text-zinc-400">Available</span>
+                    <span id="stat-avail" class="font-mono text-zinc-200 font-medium">0</span>
+                </div>
+                <span class="text-zinc-800">|</span>
+                <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+                    <span class="text-zinc-400">Held</span>
+                    <span id="stat-held" class="font-mono text-zinc-200 font-medium">0</span>
+                </div>
+                <span class="text-zinc-800">|</span>
+                <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-zinc-600"></span>
+                    <span class="text-zinc-400">Sold</span>
+                    <span id="stat-booked" class="font-mono text-zinc-200 font-medium">0</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Seat Map View -->
+        <section class="border border-zinc-800/80 bg-zinc-900/20 rounded-xl p-6 sm:p-10 flex flex-col items-center">
+            
+            <!-- Stage Marker -->
+            <div class="w-full max-w-md mx-auto mb-10 text-center">
+                <div class="h-0.5 w-full bg-zinc-800"></div>
+                <p class="text-[10px] font-mono uppercase tracking-widest text-zinc-500 mt-2.5">Stage</p>
+            </div>
+
+            <!-- Seats Grid -->
+            <div id="seat-grid" class="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-2.5 max-w-3xl w-full mx-auto">
+                <div class="col-span-full py-16 text-center text-zinc-500 text-xs font-mono">
+                    Connecting to seat inventory...
+                </div>
+            </div>
+
+            <!-- Footer Meta Bar -->
+            <div class="mt-10 pt-4 border-t border-zinc-800/80 w-full max-w-3xl flex flex-col sm:flex-row items-center justify-between text-xs text-zinc-500 gap-2">
+                <div class="flex items-center gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                    <span>Real-time polling active (2.5s)</span>
+                </div>
+                <div class="font-mono text-[11px] text-zinc-600">
+                    Concurrency protected by Redis atomic SETNX & JPA @Version
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Floating Checkout Bar -->
+    <div id="checkout-drawer" class="fixed bottom-0 inset-x-0 p-4 transition-transform duration-200 ease-out translate-y-full z-40 pointer-events-none">
+        <div class="max-w-2xl mx-auto bg-zinc-900/95 border border-zinc-800 rounded-xl p-4 shadow-2xl backdrop-blur pointer-events-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+            <!-- Left Info -->
+            <div class="flex items-center space-x-3.5 w-full sm:w-auto">
+                <div class="w-9 h-9 rounded-lg bg-zinc-800 border border-zinc-700/60 flex items-center justify-center text-zinc-300">
+                    <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm font-semibold text-zinc-100">
+                            Seat <span id="cart-seat-num" class="font-mono text-zinc-200">S-1</span>
+                        </span>
+                        <span class="text-xs text-zinc-400 font-mono">
+                            $<span id="cart-price">150.00</span>
+                        </span>
+                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-mono text-amber-400 bg-amber-400/10 border border-amber-400/20" id="cart-timer">
+                            05:00
+                        </span>
+                    </div>
+                    <p class="text-xs text-zinc-500 mt-0.5">Seat reserved. Complete payment before the timer expires.</p>
+                </div>
+            </div>
+
+            <!-- Right Controls -->
+            <div class="flex items-center space-x-2.5 w-full sm:w-auto justify-end">
+                <button onclick="releaseActiveHold()" class="px-3.5 py-2 rounded-lg border border-zinc-800 hover:border-zinc-700 bg-zinc-900 hover:bg-zinc-800/80 text-xs font-medium text-zinc-300 transition">
+                    Release Seat
+                </button>
+                <button onclick="confirmBooking()" id="pay-btn" class="px-4 py-2 rounded-lg bg-zinc-100 hover:bg-white text-zinc-950 font-medium text-xs transition flex items-center justify-center gap-1.5 shadow-sm">
+                    <span id="pay-btn-text">Confirm Booking</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Auth Modal -->
+    <div id="auth-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-6 w-full max-w-sm shadow-2xl">
+            <div class="flex justify-between items-center mb-5">
+                <div>
+                    <h3 class="text-sm font-semibold text-zinc-100">Sign in</h3>
+                    <p class="text-xs text-zinc-400 mt-0.5">Authenticate to manage holds and bookings</p>
+                </div>
+                <button onclick="toggleAuthModal()" class="text-zinc-400 hover:text-zinc-200 p-1 rounded-md transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="space-y-3.5">
+                <div>
+                    <label class="block text-xs font-medium text-zinc-400 mb-1">Email address</label>
+                    <input id="login-email" type="email" value="demo@tickethub.com" class="w-full bg-zinc-950 border border-zinc-800 focus:border-zinc-600 rounded-lg px-3 py-2 text-xs text-zinc-100 placeholder-zinc-600 focus:outline-none transition">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-zinc-400 mb-1">Password</label>
+                    <input id="login-pass" type="password" value="Demo@123456" class="w-full bg-zinc-950 border border-zinc-800 focus:border-zinc-600 rounded-lg px-3 py-2 text-xs text-zinc-100 placeholder-zinc-600 focus:outline-none transition">
+                </div>
+                <div class="pt-1 space-y-2">
+                    <button onclick="loginUser()" class="w-full py-2 bg-zinc-100 hover:bg-white text-zinc-950 rounded-lg text-xs font-medium transition">
+                        Sign In
+                    </button>
+                    <button onclick="quickDemoLogin()" class="w-full py-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 rounded-lg text-xs font-medium transition">
+                        Use Pre-filled Demo Account
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Booking Confirmation Receipt Modal -->
+    <div id="receipt-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-6 max-w-md w-full shadow-2xl">
+            <!-- Header -->
+            <div class="flex items-center space-x-3 mb-5">
+                <div class="w-9 h-9 rounded-lg bg-zinc-800 border border-zinc-700/60 flex items-center justify-center text-zinc-200">
+                    <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="text-sm font-semibold text-zinc-100">Reservation Confirmed</h3>
+                    <p class="text-xs text-zinc-400 mt-0.5">Transaction finalized and seat assigned</p>
+                </div>
+            </div>
+
+            <!-- Receipt Breakdown -->
+            <div class="bg-zinc-950 border border-zinc-800/80 rounded-lg p-4 space-y-2.5 text-xs mb-5">
+                <div class="flex justify-between items-center">
+                    <span class="text-zinc-500">Booking Reference</span>
+                    <span id="receipt-ref" class="font-mono text-zinc-200 font-medium">TH-XXXXXX</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-zinc-500">Seat Number</span>
+                    <span id="receipt-seat" class="font-mono text-zinc-200 font-medium">S-1</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-zinc-500">Amount Paid</span>
+                    <span id="receipt-amount" class="font-mono text-zinc-200 font-medium">$150.00</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-zinc-500">Payment ID</span>
+                    <span id="receipt-txn" class="font-mono text-zinc-400">TXN-XXXXXX</span>
+                </div>
+                <div class="flex justify-between items-center border-t border-zinc-800/80 pt-2.5 text-[11px]">
+                    <span class="text-zinc-500">Notification Service</span>
+                    <span class="text-zinc-400 font-mono">Dispatched to Kafka</span>
+                </div>
+            </div>
+
+            <button onclick="closeReceiptModal()" class="w-full py-2 bg-zinc-100 hover:bg-white text-zinc-950 rounded-lg text-xs font-medium transition">
+                Return to Seat Map
+            </button>
+        </div>
+    </div>
+
+    <!-- Notification Toast Container (Bottom Right) -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm pointer-events-none">
+        <div id="alert-banner" class="hidden pointer-events-auto rounded-lg border p-3.5 shadow-xl transition-all duration-200 flex items-start justify-between gap-3 bg-zinc-900 border-zinc-800 text-zinc-200">
+            <div class="flex items-start gap-2.5">
+                <div id="alert-icon" class="mt-0.5 flex-shrink-0"></div>
+                <div>
+                    <h4 id="alert-title" class="text-xs font-semibold text-zinc-200"></h4>
+                    <p id="alert-msg" class="text-xs text-zinc-400 mt-0.5"></p>
+                </div>
+            </div>
+            <button onclick="hideAlert()" class="text-zinc-500 hover:text-zinc-300 transition">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // State
+        let currentEventId = null;
+        let activeHold = null; // { seatId, seatNumber, price, remainingSeconds }
+        let holdTimerInterval = null;
+        let pollInterval = null;
+        let toastTimeout = null;
+
+        // Init
+        window.addEventListener('DOMContentLoaded', async () => {
+            checkAuth();
+            await loadEvents();
+            // Start polling every 2.5 seconds to refresh seat inventory
+            pollInterval = setInterval(fetchSeats, 2500);
+        });
+
+        function getAuthToken() {
+            return localStorage.getItem('tickethub_token');
+        }
+
+        function checkAuth() {
+            const token = getAuthToken();
+            const userDisplay = document.getElementById('user-display');
+            const authBtn = document.getElementById('auth-btn');
+
+            if (token) {
+                const email = localStorage.getItem('tickethub_email') || 'User';
+                if (userDisplay) userDisplay.innerText = email;
+                if (authBtn) {
+                    authBtn.innerText = 'Sign Out';
+                    authBtn.onclick = logoutUser;
+                }
+            } else {
+                if (userDisplay) userDisplay.innerText = 'Not signed in';
+                if (authBtn) {
+                    authBtn.innerText = 'Sign In';
+                    authBtn.onclick = toggleAuthModal;
+                }
+            }
+        }
+
+        function toggleAuthModal() {
+            const modal = document.getElementById('auth-modal');
+            if (modal) modal.classList.toggle('hidden');
+        }
+
+        async function quickDemoLogin() {
+            document.getElementById('login-email').value = 'demo@tickethub.com';
+            document.getElementById('login-pass').value = 'Demo@123456';
+            await loginUser();
+        }
+
+        async function loginUser() {
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-pass').value;
+
+            try {
+                const res = await fetch('/api/v1/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await res.json();
+                if (data.success && data.data && data.data.token) {
+                    localStorage.setItem('tickethub_token', data.data.token);
+                    localStorage.setItem('tickethub_email', data.data.email);
+                    localStorage.setItem('tickethub_userId', data.data.userId);
+                    toggleAuthModal();
+                    checkAuth();
+                    showAlert('Signed In', 'Logged in as ' + data.data.email, 'success');
+                    await fetchSeats();
+                } else {
+                    showAlert('Authentication Failed', data.message || 'Invalid credentials', 'error');
+                }
+            } catch (err) {
+                showAlert('Network Error', 'Unable to reach backend: ' + err.message, 'error');
+            }
+        }
+
+        function logoutUser() {
+            localStorage.removeItem('tickethub_token');
+            localStorage.removeItem('tickethub_email');
+            localStorage.removeItem('tickethub_userId');
+            clearActiveHoldState();
+            checkAuth();
+            showAlert('Signed Out', 'You have been logged out.', 'info');
+            fetchSeats();
+        }
+
+        async function loadEvents() {
+            try {
+                const res = await fetch('/api/v1/events?size=1');
+                const data = await res.json();
+                let event = null;
+
+                if (data.success && data.data) {
+                    if (Array.isArray(data.data.content) && data.data.content.length > 0) {
+                        event = data.data.content[0];
+                    } else if (Array.isArray(data.data) && data.data.length > 0) {
+                        event = data.data[0];
+                    }
+                }
+
+                if (event && event.id) {
+                    currentEventId = Number(event.id);
+                    const titleEl = document.getElementById('event-title');
+                    if (titleEl) titleEl.innerText = event.title || "Concert Event";
+                    const subtitleEl = document.getElementById('event-subtitle');
+                    if (subtitleEl) subtitleEl.innerText = `${event.venueName || 'Venue'} • ${event.venueCity || 'City'} — Total Capacity: ${event.totalSeats || 40}`;
+                    await fetchSeats();
+                } else {
+                    const titleEl = document.getElementById('event-title');
+                    if (titleEl) titleEl.innerText = "No Scheduled Events";
+                    const subtitleEl = document.getElementById('event-subtitle');
+                    if (subtitleEl) subtitleEl.innerText = "No events currently found in the system.";
+                }
+            } catch (err) {
+                console.error("loadEvents error:", err);
+                showAlert('Connection Warning', 'Could not load event: ' + err.message, 'error');
+            }
+        }
+
+        async function fetchSeats() {
+            if (!currentEventId) return;
+
+            const headers = {};
+            const token = getAuthToken();
+            if (token) headers['Authorization'] = 'Bearer ' + token;
+
+            try {
+                const res = await fetch(`/api/v1/events/${currentEventId}/seats`, { headers });
+                const json = await res.json();
+
+                if (json.success && json.data) {
+                    renderSeats(json.data);
+                }
+            } catch (err) {
+                console.error("Failed to poll seat inventory:", err);
+            }
+        }
+
+        function renderSeats(seats) {
+            const grid = document.getElementById('seat-grid');
+            if (!grid) return;
+            grid.innerHTML = '';
+
+            let availCount = 0;
+            let heldCount = 0;
+            let bookedCount = 0;
+
+            seats.forEach(seat => {
+                if (seat.status === 'AVAILABLE') availCount++;
+                if (seat.status === 'HELD') heldCount++;
+                if (seat.status === 'BOOKED') bookedCount++;
+
+                const btn = document.createElement('button');
+                btn.id = `seat-btn-${seat.id}`;
+                btn.className = 'h-12 w-full rounded-md border flex flex-col items-center justify-center text-xs font-mono select-none transition-colors';
+
+                if (seat.status === 'AVAILABLE') {
+                    btn.classList.add(
+                        'bg-zinc-900',
+                        'border-zinc-800',
+                        'text-zinc-300',
+                        'hover:border-zinc-700',
+                        'hover:bg-zinc-800',
+                        'hover:text-white',
+                        'cursor-pointer'
+                    );
+                    btn.innerHTML = `<span class="font-medium text-[11px]">${seat.seatNumber}</span><span class="text-[10px] text-zinc-500 font-sans">$${seat.price}</span>`;
+                    btn.onclick = () => requestHold(seat.id, seat.seatNumber, seat.price);
+                } else if (seat.status === 'HELD') {
+                    if (seat.heldByCurrentUser) {
+                        btn.classList.add(
+                            'bg-amber-400/10',
+                            'border-amber-400/50',
+                            'text-amber-300',
+                            'ring-1',
+                            'ring-amber-400/30'
+                        );
+                        btn.innerHTML = `<span class="font-medium text-[11px]">${seat.seatNumber}</span><span class="text-[10px] text-amber-400/90 font-mono">${formatTtl(seat.holdRemainingTtlSeconds)}</span>`;
+                        
+                        // Sync client active hold state if not already set
+                        if (!activeHold) {
+                            setActiveHold(seat.id, seat.seatNumber, seat.price, seat.holdRemainingTtlSeconds);
+                        }
+                    } else {
+                        btn.classList.add(
+                            'bg-zinc-900/30',
+                            'border-zinc-900',
+                            'text-zinc-600',
+                            'cursor-not-allowed'
+                        );
+                        btn.disabled = true;
+                        btn.innerHTML = `<span class="text-[11px]">${seat.seatNumber}</span><span class="text-[9px] uppercase tracking-wider text-zinc-600">Held</span>`;
+                    }
+                } else if (seat.status === 'BOOKED') {
+                    btn.classList.add(
+                        'bg-zinc-950',
+                        'border-zinc-900/50',
+                        'text-zinc-700',
+                        'cursor-not-allowed'
+                    );
+                    btn.disabled = true;
+                    btn.innerHTML = `<span class="text-[11px] line-through">${seat.seatNumber}</span><span class="text-[9px] uppercase tracking-wider text-zinc-700">Sold</span>`;
+                }
+
+                grid.appendChild(btn);
+            });
+
+            const statAvail = document.getElementById('stat-avail');
+            if (statAvail) statAvail.innerText = availCount;
+            const statHeld = document.getElementById('stat-held');
+            if (statHeld) statHeld.innerText = heldCount;
+            const statBooked = document.getElementById('stat-booked');
+            if (statBooked) statBooked.innerText = bookedCount;
+        }
+
+        async function requestHold(seatId, seatNumber, price) {
+            const token = getAuthToken();
+            if (!token) {
+                toggleAuthModal();
+                showAlert('Sign In Required', 'Please sign in to reserve seats.', 'info');
+                return;
+            }
+
+            if (!currentEventId) {
+                showAlert('Hold Unavailable', 'Event data is still loading.', 'error');
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/v1/events/${currentEventId}/seats/${seatId}/hold`, {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+
+                const data = await res.json();
+                if (res.status === 200 && data.success) {
+                    const ttl = (data.data && data.data.expiresInSeconds) ? data.data.expiresInSeconds : 300;
+                    setActiveHold(seatId, seatNumber, price, ttl);
+                    showAlert('Seat Reserved', `Seat ${seatNumber} held for 5 minutes.`, 'success');
+                    fetchSeats();
+                } else if (res.status === 409) {
+                    showAlert('Seat Unavailable', data.message || 'Seat was just claimed by another user.', 'error');
+                    fetchSeats();
+                } else {
+                    showAlert('Hold Failed', data.message || 'Could not hold seat.', 'error');
+                }
+            } catch (err) {
+                console.error("requestHold error:", err);
+                showAlert('Network Error', err.message, 'error');
+            }
+        }
+
+        function setActiveHold(seatId, seatNumber, price, ttlSeconds) {
+            activeHold = { seatId: Number(seatId), seatNumber, price: Number(price), remainingSeconds: Number(ttlSeconds) };
+            
+            const seatNumEl = document.getElementById('cart-seat-num');
+            if (seatNumEl) seatNumEl.innerText = seatNumber;
+            
+            const priceEl = document.getElementById('cart-price');
+            if (priceEl) priceEl.innerText = Number(price).toFixed(2);
+
+            const payText = document.getElementById('pay-btn-text');
+            if (payText) payText.innerText = `Confirm Booking ($${Number(price).toFixed(2)})`;
+
+            const drawer = document.getElementById('checkout-drawer');
+            if (drawer) drawer.classList.remove('translate-y-full');
+
+            if (holdTimerInterval) clearInterval(holdTimerInterval);
+            holdTimerInterval = setInterval(() => {
+                if (activeHold && activeHold.remainingSeconds > 0) {
+                    activeHold.remainingSeconds--;
+                    const timerEl = document.getElementById('cart-timer');
+                    if (timerEl) timerEl.innerText = formatTtl(activeHold.remainingSeconds);
+                } else {
+                    clearActiveHoldState();
+                    showAlert('Hold Expired', 'The seat hold has expired and returned to inventory.', 'info');
+                    fetchSeats();
+                }
+            }, 1000);
+        }
+
+        async function releaseActiveHold() {
+            if (!activeHold) return;
+            const token = getAuthToken();
+
+            try {
+                const res = await fetch(`/api/v1/events/${currentEventId}/seats/${activeHold.seatId}/hold`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                clearActiveHoldState();
+                showAlert('Hold Released', 'Seat returned to inventory.', 'info');
+                fetchSeats();
+            } catch (err) {
+                showAlert('Error', 'Failed to release hold: ' + err.message, 'error');
+            }
+        }
+
+        async function confirmBooking() {
+            if (!activeHold) {
+                showAlert('No Active Hold', 'Please select an available seat first.', 'error');
+                return;
+            }
+
+            const token = getAuthToken();
+            if (!token) {
+                toggleAuthModal();
+                showAlert('Sign In Required', 'Please sign in to complete booking.', 'info');
+                return;
+            }
+
+            const payBtn = document.getElementById('pay-btn');
+            const payText = document.getElementById('pay-btn-text');
+            if (payBtn) payBtn.disabled = true;
+            if (payText) payText.innerText = 'Processing...';
+
+            const payload = {
+                eventId: Number(currentEventId),
+                seatId: Number(activeHold.seatId),
+                paymentRequest: {
+                    amount: Number(activeHold.price),
+                    paymentMethod: 'CREDIT_CARD',
+                    cardNumber: '4111222233334444',
+                    shouldSucceed: true
+                }
+            };
+
+            try {
+                const res = await fetch('/api/v1/bookings/confirm', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await res.json();
+                if (res.status === 201 && data.success) {
+                    const booking = data.data;
+                    clearActiveHoldState();
+                    showReceipt(booking);
+                    fetchSeats();
+                } else {
+                    showAlert('Booking Failed', data.message || 'Payment or reservation failed.', 'error');
+                }
+            } catch (err) {
+                showAlert('Network Error', err.message, 'error');
+            } finally {
+                if (payBtn) payBtn.disabled = false;
+                if (payText) {
+                    const priceStr = activeHold ? `$${Number(activeHold.price).toFixed(2)}` : '';
+                    payText.innerText = priceStr ? `Confirm Booking (${priceStr})` : 'Confirm Booking';
+                }
+            }
+        }
+
+        function clearActiveHoldState() {
+            activeHold = null;
+            if (holdTimerInterval) clearInterval(holdTimerInterval);
+            const drawer = document.getElementById('checkout-drawer');
+            if (drawer) drawer.classList.add('translate-y-full');
+        }
+
+        function showReceipt(booking) {
+            const refEl = document.getElementById('receipt-ref');
+            if (refEl) refEl.innerText = booking.bookingReference;
+            const seatEl = document.getElementById('receipt-seat');
+            if (seatEl) seatEl.innerText = booking.seatNumber;
+            const amtEl = document.getElementById('receipt-amount');
+            if (amtEl) amtEl.innerText = `$${Number(booking.amount).toFixed(2)}`;
+            const txnEl = document.getElementById('receipt-txn');
+            if (txnEl) txnEl.innerText = booking.paymentTransactionId || 'TXN-SIMULATED';
+            
+            const modal = document.getElementById('receipt-modal');
+            if (modal) modal.classList.remove('hidden');
+        }
+
+        function closeReceiptModal() {
+            const modal = document.getElementById('receipt-modal');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        function formatTtl(seconds) {
+            if (!seconds || seconds <= 0) return '00:00';
+            const m = Math.floor(seconds / 60);
+            const s = Math.floor(seconds % 60);
+            return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        }
+
+        function showAlert(title, msg, type = 'info') {
+            const banner = document.getElementById('alert-banner');
+            const icon = document.getElementById('alert-icon');
+            const titleEl = document.getElementById('alert-title');
+            const msgEl = document.getElementById('alert-msg');
+
+            if (!banner || !titleEl || !msgEl || !icon) return;
+
+            banner.className = 'pointer-events-auto rounded-lg border p-3.5 shadow-xl transition-all duration-200 flex items-start justify-between gap-3 bg-zinc-900 border-zinc-800 text-zinc-200';
+
+            if (type === 'success') {
+                icon.innerHTML = `<svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>`;
+            } else if (type === 'error') {
+                icon.innerHTML = `<svg class="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>`;
+            } else {
+                icon.innerHTML = `<svg class="w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
+            }
+
+            titleEl.innerText = title;
+            msgEl.innerText = msg;
+            banner.classList.remove('hidden');
+
+            if (toastTimeout) clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                hideAlert();
+            }, 5000);
+        }
+
+        function hideAlert() {
+            const banner = document.getElementById('alert-banner');
+            if (banner) banner.classList.add('hidden');
+        }
+    </script>
+</body>
+</html>

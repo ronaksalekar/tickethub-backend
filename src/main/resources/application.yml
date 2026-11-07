@@ -3,10 +3,14 @@ spring:
     name: tickethub-backend
 
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:tickethub_db}
-    username: ${DB_USER:tickethub_user}
-    password: ${DB_PASSWORD:tickethub_password}
+    # Using 127.0.0.1 directly bypasses slow Windows IPv6 [::1] DNS resolution
+    url: jdbc:postgresql://${DB_HOST:127.0.0.1}:${DB_PORT:5432}/${DB_NAME:tickethub_db}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:271205}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      connection-timeout: 5000
+      maximum-pool-size: 10
 
   jpa:
     hibernate:
@@ -24,12 +28,12 @@ spring:
 
   data:
     redis:
-      host: ${REDIS_HOST:localhost}
+      host: ${REDIS_HOST:127.0.0.1}
       port: ${REDIS_PORT:6379}
       timeout: 2000ms
 
   kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:127.0.0.1:9092}
     consumer:
       group-id: tickethub-notification-group
       auto-offset-reset: earliest
