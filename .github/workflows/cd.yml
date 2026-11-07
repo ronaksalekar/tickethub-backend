@@ -1,0 +1,47 @@
+name: TicketHub CD Pipeline
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  verify:
+    name: Run Concurrency & Integration Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Make Maven Wrapper Executable
+        run: chmod +x mvnw
+
+      - name: Run Test Suite
+        run: ./mvnw clean test -B --no-transfer-progress
+
+  deploy:
+    name: Trigger Live Cloud Deployment
+    needs: verify
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+
+    steps:
+      - name: Trigger Cloud Deployment Webhook
+        env:
+          DEPLOY_HOOK_URL: ${{ secrets.DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$DEPLOY_HOOK_URL" ]; then
+            echo "::warning ::DEPLOY_HOOK_URL secret is not configured yet. Skipping remote deployment trigger."
+            echo "To enable automated CD, copy the Deploy Hook URL from Render or Railway and add it to your GitHub Repository -> Settings -> Secrets and variables -> Actions as DEPLOY_HOOK_URL."
+            exit 0
+          fi
+          echo "Triggering cloud deployment webhook..."
+          curl -s -f -X POST "$DEPLOY_HOOK_URL"
+          echo "Deployment trigger dispatched successfully."

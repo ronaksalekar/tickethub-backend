@@ -4,9 +4,9 @@ spring:
 
   datasource:
     # Using 127.0.0.1 directly bypasses slow Windows IPv6 [::1] DNS resolution
-    url: jdbc:postgresql://${DB_HOST:127.0.0.1}:${DB_PORT:5432}/${DB_NAME:tickethub_db}
-    username: ${DB_USER:postgres}
-    password: ${DB_PASSWORD:271205}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${DB_HOST:127.0.0.1}:${DB_PORT:5432}/${DB_NAME:tickethub_db}}
+    username: ${SPRING_DATASOURCE_USERNAME:${DB_USER:postgres}}
+    password: ${SPRING_DATASOURCE_PASSWORD:${DB_PASSWORD:271205}}
     driver-class-name: org.postgresql.Driver
     hikari:
       connection-timeout: 5000
@@ -28,8 +28,9 @@ spring:
 
   data:
     redis:
-      host: ${REDIS_HOST:127.0.0.1}
-      port: ${REDIS_PORT:6379}
+      host: ${SPRING_DATA_REDIS_HOST:${REDIS_HOST:127.0.0.1}}
+      port: ${SPRING_DATA_REDIS_PORT:${REDIS_PORT:6379}}
+      password: ${SPRING_DATA_REDIS_PASSWORD:${REDIS_PASSWORD:}}
       timeout: 2000ms
 
   kafka:
