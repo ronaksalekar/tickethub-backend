@@ -173,10 +173,10 @@
     <!-- Auth Modal -->
     <div id="auth-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-6 w-full max-w-sm shadow-2xl">
-            <div class="flex justify-between items-center mb-5">
+            <div class="flex justify-between items-center mb-4">
                 <div>
-                    <h3 class="text-sm font-semibold text-zinc-100">Sign in</h3>
-                    <p class="text-xs text-zinc-400 mt-0.5">Authenticate to manage holds and bookings</p>
+                    <h3 class="text-sm font-semibold text-zinc-100" id="auth-modal-title">Authentication</h3>
+                    <p class="text-xs text-zinc-400 mt-0.5">Select a demo user or sign in with your account</p>
                 </div>
                 <button onclick="toggleAuthModal()" class="text-zinc-400 hover:text-zinc-200 p-1 rounded-md transition">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -184,8 +184,37 @@
                     </svg>
                 </button>
             </div>
+
+            <!-- Tabs: Sign In / Register -->
+            <div class="flex border-b border-zinc-800 mb-4 text-xs font-medium">
+                <button id="tab-signin-btn" onclick="switchAuthTab('signin')" class="pb-2 border-b-2 border-zinc-100 text-zinc-100 px-3">
+                    Sign In
+                </button>
+                <button id="tab-register-btn" onclick="switchAuthTab('register')" class="pb-2 border-b-2 border-transparent text-zinc-400 hover:text-zinc-200 px-3">
+                    Register
+                </button>
+            </div>
             
-            <div class="space-y-3.5">
+            <!-- Quick Demo Accounts (For Concurrency Testing) -->
+            <div id="demo-quick-section" class="mb-4 p-3 bg-zinc-950/70 border border-zinc-800/80 rounded-lg">
+                <span class="block text-[11px] font-mono text-zinc-400 uppercase tracking-wider mb-2">1-Click Demo Accounts</span>
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="quickDemoLogin(1)" class="py-1.5 px-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/70 text-zinc-200 rounded text-xs font-medium transition text-left">
+                        <div class="font-semibold text-zinc-100">User 1</div>
+                        <div class="text-[10px] text-zinc-400 truncate">demo@tickethub.com</div>
+                    </button>
+                    <button onclick="quickDemoLogin(2)" class="py-1.5 px-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/70 text-zinc-200 rounded text-xs font-medium transition text-left">
+                        <div class="font-semibold text-zinc-100">User 2</div>
+                        <div class="text-[10px] text-zinc-400 truncate">demo2@tickethub.com</div>
+                    </button>
+                </div>
+                <p class="text-[10px] text-zinc-500 mt-2">
+                    Tip: Open an <strong>Incognito window (Ctrl+Shift+N)</strong> for User 2 to test concurrent seat holding!
+                </p>
+            </div>
+
+            <!-- Sign In Form -->
+            <div id="signin-form" class="space-y-3">
                 <div>
                     <label class="block text-xs font-medium text-zinc-400 mb-1">Email address</label>
                     <input id="login-email" type="email" value="demo@tickethub.com" class="w-full bg-zinc-950 border border-zinc-800 focus:border-zinc-600 rounded-lg px-3 py-2 text-xs text-zinc-100 placeholder-zinc-600 focus:outline-none transition">
@@ -194,14 +223,28 @@
                     <label class="block text-xs font-medium text-zinc-400 mb-1">Password</label>
                     <input id="login-pass" type="password" value="Demo@123456" class="w-full bg-zinc-950 border border-zinc-800 focus:border-zinc-600 rounded-lg px-3 py-2 text-xs text-zinc-100 placeholder-zinc-600 focus:outline-none transition">
                 </div>
-                <div class="pt-1 space-y-2">
-                    <button onclick="loginUser()" class="w-full py-2 bg-zinc-100 hover:bg-white text-zinc-950 rounded-lg text-xs font-medium transition">
-                        Sign In
-                    </button>
-                    <button onclick="quickDemoLogin()" class="w-full py-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 rounded-lg text-xs font-medium transition">
-                        Use Pre-filled Demo Account
-                    </button>
+                <button onclick="loginUser()" class="w-full mt-2 py-2 bg-zinc-100 hover:bg-white text-zinc-950 rounded-lg text-xs font-medium transition">
+                    Sign In
+                </button>
+            </div>
+
+            <!-- Register Form (Hidden by default) -->
+            <div id="register-form" class="space-y-3 hidden">
+                <div>
+                    <label class="block text-xs font-medium text-zinc-400 mb-1">Full Name</label>
+                    <input id="reg-name" type="text" placeholder="Your Name" class="w-full bg-zinc-950 border border-zinc-800 focus:border-zinc-600 rounded-lg px-3 py-2 text-xs text-zinc-100 placeholder-zinc-600 focus:outline-none transition">
                 </div>
+                <div>
+                    <label class="block text-xs font-medium text-zinc-400 mb-1">Email address</label>
+                    <input id="reg-email" type="email" placeholder="you@example.com" class="w-full bg-zinc-950 border border-zinc-800 focus:border-zinc-600 rounded-lg px-3 py-2 text-xs text-zinc-100 placeholder-zinc-600 focus:outline-none transition">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-zinc-400 mb-1">Password (min 6 chars)</label>
+                    <input id="reg-pass" type="password" placeholder="••••••••" class="w-full bg-zinc-950 border border-zinc-800 focus:border-zinc-600 rounded-lg px-3 py-2 text-xs text-zinc-100 placeholder-zinc-600 focus:outline-none transition">
+                </div>
+                <button onclick="registerUser()" class="w-full mt-2 py-2 bg-zinc-100 hover:bg-white text-zinc-950 rounded-lg text-xs font-medium transition">
+                    Create Account
+                </button>
             </div>
         </div>
     </div>
@@ -317,10 +360,71 @@
             if (modal) modal.classList.toggle('hidden');
         }
 
-        async function quickDemoLogin() {
-            document.getElementById('login-email').value = 'demo@tickethub.com';
-            document.getElementById('login-pass').value = 'Demo@123456';
+        function switchAuthTab(tab) {
+            const signinBtn = document.getElementById('tab-signin-btn');
+            const registerBtn = document.getElementById('tab-register-btn');
+            const signinForm = document.getElementById('signin-form');
+            const registerForm = document.getElementById('register-form');
+            const quickSection = document.getElementById('demo-quick-section');
+
+            if (tab === 'signin') {
+                if (signinBtn) signinBtn.className = 'pb-2 border-b-2 border-zinc-100 text-zinc-100 px-3';
+                if (registerBtn) registerBtn.className = 'pb-2 border-b-2 border-transparent text-zinc-400 hover:text-zinc-200 px-3';
+                if (signinForm) signinForm.classList.remove('hidden');
+                if (quickSection) quickSection.classList.remove('hidden');
+                if (registerForm) registerForm.classList.add('hidden');
+            } else {
+                if (registerBtn) registerBtn.className = 'pb-2 border-b-2 border-zinc-100 text-zinc-100 px-3';
+                if (signinBtn) signinBtn.className = 'pb-2 border-b-2 border-transparent text-zinc-400 hover:text-zinc-200 px-3';
+                if (registerForm) registerForm.classList.remove('hidden');
+                if (signinForm) signinForm.classList.add('hidden');
+                if (quickSection) quickSection.classList.add('hidden');
+            }
+        }
+
+        async function quickDemoLogin(userNum = 1) {
+            if (userNum === 2) {
+                document.getElementById('login-email').value = 'demo2@tickethub.com';
+                document.getElementById('login-pass').value = 'Demo@123456';
+            } else {
+                document.getElementById('login-email').value = 'demo@tickethub.com';
+                document.getElementById('login-pass').value = 'Demo@123456';
+            }
             await loginUser();
+        }
+
+        async function registerUser() {
+            const fullName = document.getElementById('reg-name').value.trim();
+            const email = document.getElementById('reg-email').value.trim();
+            const password = document.getElementById('reg-pass').value;
+
+            if (!fullName || !email || !password) {
+                showAlert('Validation Error', 'Please complete all fields.', 'error');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/v1/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ fullName, email, password })
+                });
+
+                const data = await res.json();
+                if ((res.status === 201 || res.status === 200) && data.success && data.data && data.data.token) {
+                    localStorage.setItem('tickethub_token', data.data.token);
+                    localStorage.setItem('tickethub_email', data.data.email);
+                    localStorage.setItem('tickethub_userId', data.data.userId);
+                    toggleAuthModal();
+                    checkAuth();
+                    showAlert('Account Created', 'Registered and signed in as ' + data.data.email, 'success');
+                    await fetchSeats();
+                } else {
+                    showAlert('Registration Failed', data.message || 'Could not register account.', 'error');
+                }
+            } catch (err) {
+                showAlert('Network Error', 'Unable to reach backend: ' + err.message, 'error');
+            }
         }
 
         async function loginUser() {

@@ -45,7 +45,7 @@ public class DataInitializer implements CommandLineRunner {
             log.info("Initialized default ADMIN user: {}", adminEmail);
         }
 
-        // 2. Seed Demo Customer User
+        // 2. Seed Demo Customer User 1 (Alex Morgan)
         String userEmail = "demo@tickethub.com";
         if (!userRepository.existsByEmail(userEmail)) {
             User demoUser = User.builder()
@@ -55,7 +55,20 @@ public class DataInitializer implements CommandLineRunner {
                     .role(Role.ROLE_USER)
                     .build();
             userRepository.save(demoUser);
-            log.info("Initialized default DEMO customer user: {}", userEmail);
+            log.info("Initialized default DEMO customer user 1: {}", userEmail);
+        }
+
+        // 3. Seed Demo Customer User 2 (Jordan Lee for concurrency testing)
+        String userEmail2 = "demo2@tickethub.com";
+        if (!userRepository.existsByEmail(userEmail2)) {
+            User demoUser2 = User.builder()
+                    .email(userEmail2)
+                    .password(passwordEncoder.encode("Demo@123456"))
+                    .fullName("Jordan Lee")
+                    .role(Role.ROLE_USER)
+                    .build();
+            userRepository.save(demoUser2);
+            log.info("Initialized default DEMO customer user 2: {}", userEmail2);
         }
 
         // 3. Seed Sample Venue & Event with initial seats if none exist
