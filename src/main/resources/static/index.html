@@ -581,6 +581,11 @@
                     );
                     btn.disabled = true;
                     btn.innerHTML = `<span class="text-[11px] line-through">${seat.seatNumber}</span><span class="text-[9px] uppercase tracking-wider text-zinc-700">Sold</span>`;
+
+                    // If seat is booked, make sure any local hold drawer on this seat is dismissed
+                    if (activeHold && activeHold.seatId === seat.id) {
+                        clearActiveHoldState();
+                    }
                 }
 
                 grid.appendChild(btn);
@@ -677,7 +682,14 @@
             }
         }
 
+        let isBookingInProgress = false;
+
         async function confirmBooking() {
+            if (isBookingInProgress) {
+                console.warn("Booking confirmation already in flight, ignoring duplicate click.");
+                return;
+            }
+
             if (!activeHold) {
                 showAlert('No Active Hold', 'Please select an available seat first.', 'error');
                 return;
@@ -690,10 +702,14 @@
                 return;
             }
 
+            isBookingInProgress = true;
             const payBtn = document.getElementById('pay-btn');
             const payText = document.getElementById('pay-btn-text');
-            if (payBtn) payBtn.disabled = true;
-            if (payText) payText.innerText = 'Processing...';
+            if (payBtn) {
+                payBtn.disabled = true;
+                payBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+            if (payText) payText.innerText = 'Processing Payment...';
 
             const payload = {
                 eventId: Number(currentEventId),
@@ -717,7 +733,7 @@
                 });
 
                 const data = await res.json();
-                if (res.status === 201 && data.success) {
+                if ((res.status === 200 || res.status === 201) && data.success) {
                     const booking = data.data;
                     clearActiveHoldState();
                     showReceipt(booking);
@@ -728,7 +744,11 @@
             } catch (err) {
                 showAlert('Network Error', err.message, 'error');
             } finally {
-                if (payBtn) payBtn.disabled = false;
+                isBookingInProgress = false;
+                if (payBtn) {
+                    payBtn.disabled = false;
+                    payBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
                 if (payText) {
                     const priceStr = activeHold ? `$${Number(activeHold.price).toFixed(2)}` : '';
                     payText.innerText = priceStr ? `Confirm Booking (${priceStr})` : 'Confirm Booking';

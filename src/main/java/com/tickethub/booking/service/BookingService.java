@@ -52,6 +52,13 @@ public class BookingService {
         Long eventId = request.getEventId();
         Long seatId = request.getSeatId();
 
+        // Step 0: Idempotent guard — if user already completed this booking (e.g. duplicate click or network retry)
+        Optional<Booking> existingBooking = bookingRepository.findByUserIdAndSeatId(userId, seatId);
+        if (existingBooking.isPresent()) {
+            log.info("Idempotent booking hit: Seat {} was already booked by user {}. Returning existing booking.", seatId, userId);
+            return BookingResponse.fromEntity(existingBooking.get(), "TXN-CONFIRMED");
+        }
+
         // Step 1: Pre-validation of Redis hold
         Optional<Long> holdOwner = seatHoldService.getHoldOwner(eventId, seatId);
         if (holdOwner.isEmpty()) {
